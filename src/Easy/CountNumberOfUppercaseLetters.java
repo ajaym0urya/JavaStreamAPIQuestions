@@ -11,7 +11,7 @@ public class CountNumberOfUppercaseLetters {
         String str="JavaStreamAPI" ;
         long count=  str.chars()           // Convert int to Character
                 .filter(Character::isUpperCase)
-                .count();
+                 .count();
 
         System.out.println(count);
     }
