@@ -1,8 +1,3 @@
-package Easy;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
 public class CountNumberOfUppercaseLetters {
     public static void main(String[] args) {
         // Input: "JavaStreamAPI"

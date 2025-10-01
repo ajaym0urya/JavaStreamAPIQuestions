@@ -1,7 +1,4 @@
-package Easy;
-
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class FilterVowelsFromAString {
     public static void main(String[] args) {
