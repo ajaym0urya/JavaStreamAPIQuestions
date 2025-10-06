@@ -1,0 +1,663 @@
+learned about JSP and Servlet
+
+JSP Directives
+
+page – Defines page-level settings
+include – Includes another file
+taglib – Declares custom tag libraries
+
+<%@ page language="java" contentType="text/html; charset=UTF-8" %>
+<%@ include file="header.jsp" %>
+
+
+<web-app>
+    <servlet>
+        <servlet-name>MyApp</servlet-name>
+        <jsp-file>/index.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>MyApp</servlet-name>
+        <url-pattern>/index</url-pattern>
+    </servlet-mapping>
+</web-app>
+
+
+
+
+
+
+
+Below is a *comprehensive set of tutorial notes* on **JSP (JavaServer Pages)** and **Servlets**, covering from basics to advanced topics, with examples, best practices, and architecture. You can use this as a study guide, cheat‑sheet, or reference.
+
+If you want a PDF version, sample projects, or code downloads, I can share those too.
+
+---
+
+## Table of Contents
+
+1. Introduction & Concepts
+2. Servlet
+
+   1. What is a Servlet
+   2. Servlet Life Cycle
+   3. Servlet API & Key Interfaces / Classes
+   4. Handling Requests & Responses (HttpServlet)
+   5. Servlet Configuration: web.xml & Annotations
+   6. Servlet Context, Config, Init Parameters
+   7. Session Management
+   8. Filters, Listeners
+   9. Exception Handling, Error Pages
+   10. File Upload / Multipart
+   11. Asynchronous Servlets
+   12. Database & Connection Pooling / JNDI
+3. JSP (JavaServer Pages)
+
+   1. What is JSP & its Role
+   2. JSP Life Cycle
+   3. JSP Scripting Elements: Expressions, Scriptlets, Declarations
+   4. Directives (page, include, taglib)
+   5. JSP Implicit Objects
+   6. JSP Expression Language (EL)
+   7. Standard Action Tags (jsp:include, jsp:forward, useBean, param, etc.)
+   8. JSTL – Core, Formatting, SQL, XML, Functions
+   9. Custom Tags (Tag Libraries)
+   10. JSP Error Handling / Exception Pages
+   11. Best Practices (MVC, Separation of Concerns)
+4. Integration: Servlet + JSP
+
+   1. Request Dispatching: forward vs redirect
+   2. Passing data from servlet to JSP
+   3. MVC Architecture with Servlet + JSP
+5. Advanced & Miscellaneous
+
+   1. Security, Authentication & Authorization
+   2. Filters / Interceptors in web apps
+   3. Internationalization (i18n)
+   4. Caching, Performance considerations
+   5. WebSocket, AJAX with JSP/Servlets
+   6. Migrating to frameworks (Spring MVC, JSF, etc.)
+6. Sample Example / Mini Project
+7. FAQs / Common Pitfalls
+8. Summary & Further Reading
+
+---
+
+Let’s go section by section.
+
+---
+
+## 1. Introduction & Concepts
+
+* Java web applications typically follow a *request‑response* model: client (browser) sends HTTP requests, server processes and returns HTTP responses (HTML, JSON, etc.).
+* **Servlets** and **JSP** are part of Java EE / Jakarta EE technologies for handling server-side logic and dynamic content generation.
+* JSP is essentially a higher-level abstraction over Servlets: JSP pages are converted (translated) into Servlets under the hood by the web container. ([StackOverflow][1])
+* Using JSP helps separate presentation (HTML) from business logic (Servlets), making maintenance easier. ([wideskills.com][2])
+* Servlet is more “low-level” (you write Java code that writes to `HttpServletResponse`, etc.), while JSP lets you embed Java in HTML templates (or better, use EL, JSTL, custom tags) for views.
+* Over time, the standard approach is to use Servlet as controller / business logic, and JSP as view (in MVC pattern).
+
+---
+
+## 2. Servlet
+
+### 2.1 What is a Servlet
+
+* A **Servlet** is a Java class that runs on a server (servlet container, e.g. Apache Tomcat) and responds to client requests (usually HTTP). ([GeeksforGeeks][3])
+* It is part of the `javax.servlet` (or `jakarta.servlet` in newer Jakarta EE) API.
+* It’s used to generate dynamic content (HTML, data, JSON etc.) rather than static files.
+
+### 2.2 Servlet Life Cycle
+
+A servlet typically goes through these phases:
+
+1. **Loading & Instantiation**: The container loads the Servlet class (either on startup or when first request arrives), and creates an instance.
+2. **Initialization (`init()`)**: The container calls `init(ServletConfig config)` once. Used for one‑time initialization.
+3. **Request Handling (`service()`)**: For each request, the container calls `service(HttpServletRequest req, HttpServletResponse res)`. The `service` method dispatches to `doGet()`, `doPost()`, etc.
+4. **Destruction (`destroy()`)**: Before the servlet is removed (e.g. container shutdown), `destroy()` is called to clean up resources.
+
+Key points:
+
+* `init()` and `destroy()` are called once per servlet instance.
+* The same servlet instance handles multiple requests (multi-threaded). You should avoid using instance variables unless thread-safe or synchronized.
+* For HTTP, usually subclass `HttpServlet` and override `doGet()`, `doPost()`, etc.
+
+### 2.3 Servlet API & Key Interfaces / Classes
+
+Important interfaces / classes in servlet API:
+
+* `javax.servlet.Servlet` (or `jakarta.servlet.Servlet`)
+* `javax.servlet.http.HttpServlet`
+* `ServletRequest`, `HttpServletRequest`
+* `ServletResponse`, `HttpServletResponse`
+* `ServletConfig`
+* `ServletContext`
+* `RequestDispatcher`
+* `ServletException`, `IOException`
+* `Filter`, `FilterChain`, `FilterConfig`
+* `Listener` interfaces (e.g. `ServletContextListener`, `HttpSessionListener`)
+
+### 2.4 Handling Requests & Responses (HttpServlet)
+
+Example:
+
+```java
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        out.println("<h1>Hello from Servlet</h1>");
+        out.close();
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        // handle form POST
+        String name = request.getParameter("name");
+        request.setAttribute("greeting", "Hello, " + name);
+        request.getRequestDispatcher("hello.jsp").forward(request, response);
+    }
+}
+```
+
+Key methods and concepts:
+
+* `getParameter(String name)` to get query/form parameters
+* `getParameterNames()`, `getParameterValues(...)`
+* `getHeader()`, `getCookies()`, etc.
+* Setting response headers, status codes
+* `response.sendRedirect(...)` vs `RequestDispatcher.forward(...)`
+* `request.getRequestDispatcher("path").forward(...)` to forward internally
+* `response.sendRedirect(...)` causes a client redirect (new request)
+
+### 2.5 Servlet Configuration: web.xml & Annotations
+
+Older style:
+
+```xml
+<servlet>
+  <servlet-name>hello</servlet-name>
+  <servlet-class>com.example.HelloServlet</servlet-class>
+</servlet>
+<servlet-mapping>
+  <servlet-name>hello</servlet-name>
+  <url-pattern>/hello</url-pattern>
+</servlet-mapping>
+```
+
+Newer style (Servlet 3+):
+
+```java
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet { … }
+```
+
+You can also define init parameters (via `@WebInitParam` or `<init-param>`), load-on-startup, etc.
+
+### 2.6 ServletContext, ServletConfig, Init Parameters
+
+* `ServletConfig`: per-servlet configuration; passed to `init()`, contains init params for that servlet.
+* `ServletContext`: application-wide context for the web app; shared by all servlets. You can store global attributes there.
+* You can define context-level init params in `web.xml`, and access via `ServletContext.getInitParameter(...)`.
+
+### 2.7 Session Management
+
+Since HTTP is stateless, Java web apps use mechanisms to track sessions:
+
+* **Cookies**: send a session ID cookie (JSESSIONID)
+* **URL Rewriting**: attach session ID in URL if cookies disabled
+* **Hidden form fields** (less common)
+* `HttpSession` object: set attributes (`session.setAttribute(...)`) and retrieve (`session.getAttribute(...)`)
+* `session.invalidate()` to end session
+* Session timeout configuration
+
+Example:
+
+```java
+HttpSession session = request.getSession();  // creates if not exists
+session.setAttribute("user", userObj);
+session.getAttribute("user");
+```
+
+Also, in JSP you can use implicit object `session`.
+
+### 2.8 Filters & Listeners
+
+* **Filter**: implemented via `javax.servlet.Filter`. Filters can intercept requests and responses before they reach servlets or JSPs. Typical uses: logging, authentication, input validation, compression, etc.
+
+  * `doFilter(ServletRequest, ServletResponse, FilterChain)`
+  * Configured via `@WebFilter` or `<filter>` in web.xml
+  * `FilterChain.doFilter(...)` passes to next filter or target resource
+* **Listeners**: for reacting to lifecycle events
+
+  * `ServletContextListener` (web app init & destroy)
+  * `HttpSessionListener` (session created / destroyed)
+  * `ServletRequestListener` (request lifecycle)
+  * `ServletContextAttributeListener`, `HttpSessionAttributeListener`, etc.
+
+### 2.9 Exception Handling & Error Pages
+
+* You can define error pages in `web.xml`:
+
+```xml
+<error-page>
+  <exception-type>java.lang.Exception</exception-type>
+  <location>/error.jsp</location>
+</error-page>
+<error-page>
+  <error-code>404</error-code>
+  <location>/404.jsp</location>
+</error-page>
+```
+
+* Use `response.sendError(...)` or throw `ServletException` / `IOException`
+* In JSP, you can specify `errorPage` directive `<%@ page errorPage="error.jsp" %>` and in error JSP use `<%@ page isErrorPage="true" %>` to get `exception` implicit object.
+
+### 2.10 File Upload / Multipart (Servlet 3.0+)
+
+* Servlet 3.0 introduced `@MultipartConfig` and `Part` interface for file uploads.
+* Example:
+
+```java
+@WebServlet("/upload")
+@MultipartConfig
+public class UploadServlet extends HttpServlet {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+        throws ServletException, IOException {
+        Part filePart = req.getPart("file");
+        String filename = filePart.getSubmittedFileName();
+        InputStream is = filePart.getInputStream();
+        // save it somewhere
+    }
+}
+```
+
+* Before Servlet 3.0, libraries like Apache Commons FileUpload were used.
+* For downloads, set response headers like `Content-Disposition` etc.
+
+### 2.11 Asynchronous Servlets
+
+* Servlet 3.0 / 3.1 support asynchronous processing: you can call `request.startAsync()` and process the response later in another thread. Useful for long-running tasks to free container thread.
+* Use `AsyncContext` etc.
+
+### 2.12 Database, Connection Pooling & JNDI
+
+* Most web applications connect to a database. Servlets should not manage raw JDBC in each request inefficiently. Use connection pooling (DataSource).
+* Use JNDI to configure DataSource in your web container (e.g., Tomcat), then look it up in code.
+* Use `ServletContextListener` or startup servlet to initialize the DataSource.
+* Then inside servlet, get connection from DataSource, run queries, close (return to pool).
+
+---
+
+## 3. JSP (JavaServer Pages)
+
+### 3.1 What is JSP & Its Role
+
+* JSP is a server-side technology that allows embedding Java code or expressions inside HTML, to dynamically generate content. ([GeeksforGeeks][4])
+* The JSP engine (in servlet container) translates JSP into a servlet (Java class) behind the scenes (translation + compilation). ([StackOverflow][1])
+* The JSP lifecycle is thus closely tied to servlet lifecycle.
+* It is mainly used for the **view/presentation** part, not for heavy business logic.
+
+### 3.2 JSP Life Cycle
+
+Roughly:
+
+1. **Translation**: JSP → servlet source code
+2. **Compilation**: servlet source → `.class`
+3. **Loading & Instantiation**
+4. **`jspInit()`** (if defined)
+5. **_jspService(HttpServletRequest, HttpServletResponse)** — this method corresponds to request handling
+6. **`jspDestroy()`** (cleanup)
+
+You cannot override `_jspService()` — it’s generated automatically.
+
+### 3.3 JSP Scripting Elements
+
+You can write Java inside JSP using:
+
+* **Expression**: `<%= expression %>` — prints the result
+  Example: `<%= new java.util.Date() %>`
+* **Scriptlet**: `<% Java code %>` — arbitrary Java inside service method
+* **Declaration**: `<%! declarations %>` — class-level variables or methods
+
+Example:
+
+```jsp
+<%@ page import="java.util.Date" %>
+<html>
+<body>
+<%! private Date now = new Date(); %>
+<%
+   String msg = "Hello, JSP!";
+%>
+Current time: <%= now %> <br/>
+Message: <%= msg %>
+</body>
+</html>
+```
+
+Scriptlets put code into `_jspService`, declarations go at class level, expressions are converted to `out.print(...)`.
+
+### 3.4 Directives (page, include, taglib)
+
+* **page directive**: `<%@ page ... %>` — specify import, contentType, errorPage, buffer, session, etc.
+  Example: `<%@ page import="java.util.*" contentType="text/html;charset=UTF-8" %>`
+
+* **include directive**: `<%@ include file="header.jsp" %>` — static include at translation time.
+
+* **taglib directive**: `<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>` — declare use of the JSTL/custom tags.
+
+### 3.5 JSP Implicit Objects
+
+JSP automatically provides these implicit objects (without needing to declare them):
+
+* `request` (HttpServletRequest)
+* `response`
+* `session`
+* `application` (ServletContext)
+* `config` (ServletConfig)
+* `out` (JspWriter)
+* `pageContext`
+* `page` (this object)
+* `exception` (if `isErrorPage="true"`)
+
+These allow you to access request parameters, session, context, attributes, etc.
+
+### 3.6 JSP Expression Language (EL)
+
+EL simplifies access to attributes / parameters without scriptlets:
+
+* `${param.name}` — request parameter
+* `${paramValues.list}` — multiple values
+* `${requestScope.attr}`, `${sessionScope.attr}`, `${applicationScope.attr}`
+* `${attribute}` tries implicit resolution (page, request, session, application)
+* Supports operators: `${a + b}`, `${person.name}`, `${not empty list}`, etc.
+* EL 2.2+ allows method invocation in some containers.
+
+### 3.7 Standard Action Tags
+
+These are tags that perform certain standard tasks:
+
+* `<jsp:include page="header.jsp" />` — dynamic include (at request time)
+* `<jsp:forward page="somepage.jsp" />` — forward request
+* `<jsp:useBean id="bean" class="com.example.Person" scope="session" />` — instantiate or refer to a bean
+* `<jsp:setProperty>` / `<jsp:getProperty>`
+* `<jsp:param>` for passing parameters
+
+These help reduce scriptlets.
+
+### 3.8 JSTL (JSP Standard Tag Library)
+
+JSTL is a standard collection of tag libraries to avoid scriptlets:
+
+* **Core tags** (`<c:out>`, `<c:if>`, `<c:forEach>`, `<c:set>`, `<c:choose>`, etc.)
+* **Formatting / internationalization tags** (`<fmt:message>`, `<fmt:formatDate>`, etc.)
+* **SQL tags** (execute queries; not recommended in view layer but available)
+* **XML tags**
+* **Functions** (fn: substring, length, etc.)
+
+Using JSTL + EL is the modern recommended way to write JSP views (minimize scriptlets).
+
+### 3.9 Custom Tags (Tag Libraries)
+
+When built-in tags are not enough, you can create custom tags:
+
+* **Simple Tag Handlers** (implement `SimpleTag` or extend `SimpleTagSupport`)
+* **Classic Tag Handlers** (implement `Tag` interface)
+* Define `.tld` (Tag Library Descriptor) files
+* Use tag attributes, body, looping, etc.
+* In JSP: `<mytags:mytag attr1="value"> ... </mytags:mytag>`
+
+Custom tags help encapsulate reusable view logic.
+
+### 3.10 JSP Error Handling / Exception Pages
+
+* Use `<%@ page errorPage="error.jsp" %>` in JSP pages
+* Error JSP should have `<%@ page isErrorPage="true" %>` to access `exception` implicit object
+* Or define global error pages in `web.xml`
+* In error JSP, you can show stack trace, message, etc.
+
+### 3.11 Best Practices (MVC, Separation of Concerns)
+
+* Avoid using scriptlets in JSP; prefer EL, JSTL, custom tags
+* Business logic → Servlets / backend classes / services
+* JSP → view / presentation
+* Use MVC pattern: Servlet as controller, JSP as view, model objects separate
+* Avoid putting JDBC or heavy logic in JSP
+* Centralize common parts (header, footer) using `include` or tag files
+* Use proper validations, encoding (to avoid XSS)
+* Use sessions carefully and invalidate when needed
+
+---
+
+## 4. Integration: Servlet + JSP
+
+### 4.1 Request Dispatching: forward vs redirect
+
+* `request.getRequestDispatcher("page.jsp").forward(request, response)`: server-side forward, same request, URL doesn’t change.
+* `response.sendRedirect("someUrl")`: client redirect, new request, URL changes, parameters lost unless passed.
+
+Use forward when passing control internally; redirect when you want client to make a fresh request (e.g., after form post to avoid resubmission).
+
+### 4.2 Passing data from servlet to JSP
+
+In servlet:
+
+```java
+request.setAttribute("user", userObj);
+request.getRequestDispatcher("profile.jsp").forward(request, response);
+```
+
+In `profile.jsp`:
+
+```jsp
+${user.username}
+<c:out value="${user.email}" />
+```
+
+You can also use scopes: `session.setAttribute(...)` (accessible via `sessionScope`) or `application` scope.
+
+### 4.3 MVC Architecture with Servlet + JSP
+
+Typical flow:
+
+1. Client sends HTTP request
+2. Request goes to a **controller servlet**
+3. The servlet processes input, interacts with model (business logic, DAO, services)
+4. It sets result in request or session attributes
+5. It forwards to JSP view
+6. JSP uses EL / JSTL / tags to render view
+
+This pattern ensures separation of concerns, maintainability, and easier testing.
+
+---
+
+## 5. Advanced & Miscellaneous
+
+### 5.1 Security, Authentication & Authorization
+
+* Use servlet filters for authentication / authorization (check session / roles)
+* Use `web.xml` security constraints, `<security-constraint>`, `<login-config>`
+* Use HTTPS, session fixation prevention, CSRF tokens
+* Use `HttpServletRequest.isUserInRole()`, `getUserPrincipal()`, `login()`, `logout()` (in Servlet 3.0+)
+
+### 5.2 Filters / Interceptors in web apps
+
+Filters can perform:
+
+* Logging / audit
+* Input validation / sanitization
+* Compression / GZIP
+* Cross-origin headers (CORS)
+* Setting character encoding
+* Rate limiting
+
+Chain of filters is invoked before the target servlet/JSP.
+
+### 5.3 Internationalization (i18n)
+
+* Use JSTL `<fmt:message>` and resource bundles (`.properties`)
+* Configure locale in session or request
+* Format numbers, dates using `<fmt:formatDate>`, `<fmt:formatNumber>`
+
+### 5.4 Caching, Performance Considerations
+
+* Use `Expires` / `Cache-Control` headers
+* Use JSP precompilation to avoid translation cost at runtime
+* Minimize scriptlets / heavy logic in JSP
+* Use connection pools, avoid opening DB connections per request
+* Use tag reuse / custom tags
+* Use asynchronous servlets for long-running tasks
+
+### 5.5 WebSocket, AJAX with JSP / Servlets
+
+* Servlets can act as AJAX endpoints (return JSON)
+* JSP can include JavaScript / AJAX calls to servlets
+* For real-time, you can integrate WebSocket endpoints (in Java EE / Jakarta EE)
+* Use `@WebSocket` or libraries (e.g., `javax.websocket`)
+
+### 5.6 Migrating to Frameworks (Spring MVC, JSF, etc.)
+
+* Modern Java web apps often use frameworks like Spring MVC, which internally use the servlet spec (DispatcherServlet)
+* JSP might still be used as a view technology (or replaced by Thymeleaf, Freemarker, etc.)
+* Understanding JSP/Servlet helps you grasp what frameworks abstract
+
+---
+
+## 6. Sample Example / Mini Project
+
+Let me sketch a simple “Login & Dashboard” mini web app:
+
+**Project structure**:
+
+```
+MyWebApp/
+ ├ WEB‑INF/
+ │   ├ web.xml
+ │   └ classes/  (compiled servlets etc.)
+ ├ login.jsp
+ ├ dashboard.jsp
+ ├ error.jsp
+ └ (maybe css/js/images etc.)
+```
+
+**login.jsp**:
+
+```jsp
+<!DOCTYPE html>
+<html>
+<body>
+<form method="post" action="LoginServlet">
+  Username: <input type="text" name="username"/><br/>
+  Password: <input type="password" name="password"/><br/>
+  <input type="submit" value="Login" />
+</form>
+<c:if test="${not empty error}">
+  <div style="color:red;">${error}</div>
+</c:if>
+</body>
+</html>
+```
+
+**LoginServlet.java**:
+
+```java
+@WebServlet("/LoginServlet")
+public class LoginServlet extends HttpServlet {
+  protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+      throws ServletException, IOException {
+    String u = req.getParameter("username");
+    String p = req.getParameter("password");
+    if ("admin".equals(u) && "password".equals(p)) {
+      HttpSession session = req.getSession();
+      session.setAttribute("user", u);
+      resp.sendRedirect("dashboard.jsp");
+    } else {
+      req.setAttribute("error", "Invalid login");
+      req.getRequestDispatcher("login.jsp").forward(req, resp);
+    }
+  }
+}
+```
+
+**dashboard.jsp**:
+
+```jsp
+<%@ page import="javax.servlet.http.HttpSession" %>
+<%@ page session="true" %>
+<%
+  String user = (String) session.getAttribute("user");
+  if (user == null) {
+    response.sendRedirect("login.jsp");
+    return;
+  }
+%>
+<html>
+<body>
+  <h1>Welcome, <%= user %>!</h1>
+  <a href="LogoutServlet">Logout</a>
+</body>
+</html>
+```
+
+**LogoutServlet.java**:
+
+```java
+@WebServlet("/LogoutServlet")
+public class LogoutServlet extends HttpServlet {
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+      throws ServletException, IOException {
+    HttpSession session = req.getSession(false);
+    if (session != null) {
+      session.invalidate();
+    }
+    resp.sendRedirect("login.jsp");
+  }
+}
+```
+
+You can expand with DB validation, role checks, filters, etc.
+
+---
+
+## 7. FAQs / Common Pitfalls
+
+* **Thread safety**: Don’t use servlet instance variables to store per-request data unless properly synchronized.
+* **Null session**: `request.getSession(false)` returns null if no session exists; check before using.
+* **Character encoding issues**: set `request.setCharacterEncoding("UTF-8")` and `response.setContentType("text/html;charset=UTF-8")`
+* **JSP translation errors**: check for mismatched tags, imports, syntax.
+* **ClassNotFound / jar issues**: ensure `servlet-api.jar` is in container, not in web app’s `WEB-INF/lib`.
+* **Scriptlet misuse**: avoid heavy Java in JSP — use EL, JSTL.
+* **Redirect vs forward confusion**: understand life cycle and URL behavior.
+* **Session fixation**: after login, invalidate old session or create new.
+* **Resource cleanup**: close JDBC, streams, etc.
+
+---
+
+## 8. Summary & Further Reading
+
+* Servlets provide backend logic, handling HTTP requests/responses.
+* JSP provides a view layer, easier template-like dynamic HTML generation.
+* Modern best practice: **Servlet as controller**, **JSP (with EL/JSTL) as view** — MVC pattern.
+* Use filters, listeners, session management, data sources, security practices.
+* Frameworks like Spring MVC build on top of servlet concepts, so learning JSP/Servlet gives a strong foundation.
+
+### Further Reading & Resources
+
+* DigitalOcean’s Servlet JSP series – good step-by-step guide. ([DigitalOcean][5])
+* GeeksforGeeks on JSP / Servlets basics. ([GeeksforGeeks][4])
+* JavaGuides’ JSP tutorials and example projects. ([javaguides.net][6])
+* The **Head First Servlets & JSP** book (recommended for clear concepts)
+
+---
+
+If you like, I can convert these notes into a nicely formatted PDF/Slides for you, or I can give you code examples you can run step by step. Do you want me to prepare that?
+
+[1]: https://www.stackoverflowpoint.com/jsp-tutorial/?utm_source=chatgpt.com "JSP Tutorial - W3schools | Tutorialspoint | JavaTpoint"
+[2]: https://www.wideskills.com/servlets/introduction-to-jsp?utm_source=chatgpt.com "Introduction to JSP | Servlets tutorial by Wideskills"
+[3]: https://www.geeksforgeeks.org/introduction-java-servlets/33/?utm_source=chatgpt.com "Introduction to Java Servlets | GeeksforGeeks | Page 33"
+[4]: https://www.geeksforgeeks.org/advance-java/introduction-to-jsp/?utm_source=chatgpt.com "Introduction to JSP - GeeksforGeeks"
+[5]: https://www.digitalocean.com/community/tutorials/servlet-jsp-tutorial?utm_source=chatgpt.com "Servlet JSP Tutorial | DigitalOcean"
+[6]: https://www.javaguides.net/p/jsp-tutorial.html?utm_source=chatgpt.com "JSP Tutorial"
